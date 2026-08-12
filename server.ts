@@ -19,7 +19,7 @@ import {
 import type { AssessmentSubmission, StudentPresence } from "./src/types";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
 
 const app = next({ dev, hostname, port });
@@ -345,7 +345,7 @@ app.prepare().then(() => {
     });
   });
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, hostname, () => {
     console.log(`> 중학교 정보 교과 코스웨어 (Informatics Courseware) ready on http://${hostname}:${port}`);
   });
 });
