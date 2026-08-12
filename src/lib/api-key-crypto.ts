@@ -19,6 +19,10 @@ function fromB64(b64: string): Uint8Array {
   return bytes;
 }
 
+function toArrayBuffer(u8: Uint8Array): ArrayBuffer {
+  return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+}
+
 async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey(
     "raw",
@@ -30,7 +34,7 @@ async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt,
+      salt: toArrayBuffer(salt),
       iterations: 120000,
       hash: "SHA-256",
     },
@@ -46,11 +50,11 @@ async function aesEncrypt(plain: string, secret: string): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(secret, salt);
   const cipher = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: toArrayBuffer(iv) },
     key,
     new TextEncoder().encode(plain)
   );
-  return `${toB64(salt.buffer)}.${toB64(iv.buffer)}.${toB64(cipher)}`;
+  return `${toB64(toArrayBuffer(salt))}.${toB64(toArrayBuffer(iv))}.${toB64(cipher)}`;
 }
 
 async function aesDecrypt(payload: string, secret: string): Promise<string> {
@@ -60,7 +64,11 @@ async function aesDecrypt(payload: string, secret: string): Promise<string> {
   const iv = fromB64(ivB64);
   const data = fromB64(dataB64);
   const key = await deriveKey(secret, salt);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: toArrayBuffer(iv) },
+    key,
+    toArrayBuffer(data)
+  );
   return new TextDecoder().decode(plain);
 }
 
